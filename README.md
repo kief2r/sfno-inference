@@ -40,28 +40,68 @@ echo $UV_CACHE_DIR # to verify it worked!
 ##### `utils.py`
 - helper functions e.g. creating Initialization files, opening files.
 
-#### `plot_metric_utils.py`
-- helper functions for plotting and metrics (mse, IoU, amplitude) from inference runs.
-
 ##### `inference.py`
 - main script to run SFNO inference with earth2studio.
 
 #### `inference_job_arr.sh`
 - uses a job array to parallelize inference runs on BU SCC.
 
+#### `inference.sh`
+- single-job (non-array) variant of the submission script for running one experiment without splitting across tasks.
+
 #### `configs/`
 - contains .json config files for different experiments and inference runs.
 
 #### `examples/`
-- contains example notebooks for visualizing specific events and plotting metrics.
+- contains example notebooks and plotting/metric helpers:
+  - `example_Hurricane_Ian_inference.ipynb` — end-to-end inference example for Hurricane Ian.
+  - `example_create_init_file.ipynb` — walkthrough for building initialization files.
+  - `example_visualize_inference_runs_atmosphericRiver.ipynb` — visualizing atmospheric river inference output.
+  - `viz_perturbations_3.4.ipynb` — visualizing perturbation experiments.
+  - `plot_metric_utils.py` — helper functions for plotting and metrics (mse, IoU, amplitude) from inference runs.
+  - `figures/` — saved figures produced by the example notebooks.
 
 ## Running inference
-To run inference, submit the `inference_job_arr.sh` script with a specified experiment number:
+
+### Before your first submission
+Open `inference_job_arr.sh` (and/or `inference.sh`) and fill in the following placeholders:
+
+| Placeholder | Where | What to set it to |
+| :--- | :--- | :--- |
+| `PROJECT_NAME` | `#$ -P PROJECT_NAME` | Your SCC project name. |
+| `INSERT_LOG_DIRECTORY` | `LOG_DIR="INSERT_LOG_DIRECTORY/Experiment${EXP_NUM}"` | Directory for job stdout/stderr logs. The script will create `Experiment{N}/` under it automatically. |
+| `INSERT_PROJECT_DIRECTORY` | `cd INSERT_PROJECT_DIRECTORY` | Path to your local checkout of this repo (where `inference.py` lives). |
+| `earth2studio` | `conda activate e2s-new` | Make sure this matches the env name you created in the *Environment setup* section above (e.g. `e2s-new`). |
+
+You also need to set the initialization file directory inside `inference.py`:
+
+| Placeholder | Where | What to set it to |
+| :--- | :--- | :--- |
+| `INSERT_YOUR_DIRECTORY_OF_INITIALIZATION_FILES` | `data_create_fp = f"/INSERT_YOUR_DIRECTORY_OF_INITIALIZATION_FILES/Initialize_..."` in `inference.py` | Directory where `Initialize_*.nc` files are stored / will be cached. |
+
+And in your experiment config (`configs/expN.json`), set `paths.base_output_dir` to the directory where forecast NetCDFs should be saved.
+
+### Submitting a job
+For a parallelized run using a job array:
 ```
 qsub inference_job_arr.sh <experiment_number>
 ```
-- Ensure that the experiment number you provide corresponds to a valid configuration file with the desired settings in at `configs/expN.json` where `N` is the experiment number.
-- Not providing a number will default to experiment 2 (`configs/exp2.json`).
+- `<experiment_number>` corresponds to the config file `configs/expN.json`.
+- Omitting the number defaults to experiment 2 (`configs/exp2.json`).
+- The number of array tasks is controlled by `#$ -t 1-4` at the top of `inference_job_arr.sh` — increase the upper bound to spread epochs across more GPUs.
+
+For a single (non-array) run:
+```
+qsub inference.sh <experiment_number>
+```
+
+### Monitoring & cleanup
+```
+qstat -u $USER              # list your running/queued jobs
+qstat -j <job_id>            # detailed status for one job
+qdel <job_id>                # cancel a job (or job array)
+```
+Job logs go in `LOG_DIR/Experiment{N}/inference_parallel_<JOB_ID>_<TASK_ID>.log` (any print statements, inference info, etc.).
 
 ## Configuration options
 
@@ -69,7 +109,7 @@ qsub inference_job_arr.sh <experiment_number>
 
 | Key | Type | Description | Options / Examples |
 | :--- | :--- | :--- | :--- |
-| **`event_type`** | `string` | Defines the specific extreme event category. This determines default variable selections in the code logic. | `"atmospheric_river"`, `"tropical_cyclone"`, `"heat_wave"`, `"severe_convection"` |
+| **`event_type`** | `string` | The specific extreme event category. | `"atmospheric_river"`, `"tropical_cyclone"`, `"heat_wave"`, `"severe_convection"` |
 | **`valid_timestep`** | `string` | The target datetime to forecast for (ISO 8601 format). | `"2022-12-27T00:00:00"` |
 | **`leadtimes_days`** | `list[int]` | The number of days *prior* to the valid timestep to initialize the model. | `[3, 5, 7]` (Forecasts initialized 3, 5, and 7 days before the event) |
 | **`variables_to_save`** | `list[str]` | Specific variables to save to the output NetCDF to save space/time. | `["tcwv", "u700", "v700", "z500"]`, `["msl", "u10m", "v10m"]` |
@@ -92,7 +132,7 @@ qsub inference_job_arr.sh <experiment_number>
 
 | Key | Type | Description | Example |
 | :--- | :--- | :--- | :--- |
-| **`base_output_dir`** | `string` | The root directory where log and forecast output will be saved. |  |
+| **`base_output_dir`** | `string` | The root directory where forecast NetCDF output is saved (under `Experiment{N}/{date}/`). Job stdout/stderr logs go to `LOG_DIR` set in the submission script. |  |
 
 ---
 
@@ -126,7 +166,7 @@ qsub inference_job_arr.sh <experiment_number>
       "sp",
       "msl",
       "tcwv",
-      "d2m", # 2m dewpoint temperature (additional channel)
+      "d2m", # 2m dewpoint temperature (additional channel from FCNv2)
       "u50",
       "u100",
       "u150",
