@@ -27,7 +27,8 @@ def deterministic(
     prognostic: PrognosticModel,
     data: DataSource,
     io: IOBackend,
-    variables_list: None, # added for variable subsetting
+    variables_list: list[str] | str | None = 'all',
+    save_all_steps: bool = False,
     output_coords: CoordSystem = OrderedDict({}),
     device: torch.device | None = None,
 ) -> IOBackend:
@@ -51,8 +52,13 @@ def deterministic(
         IO output coordinate system override, by default OrderedDict({})
     device : torch.device, optional
         Device to run inference on, by default None
-    variables_list: list[str] | None, optional
-        List of variable names to subset and save to io. If None, saves all variables. If empty list, saves no variables. By default None.
+    variables_list : list[str] | str | None, optional
+        Controls which variables are copied GPU->CPU into io at each written step.
+        'all' copies every variable. None or [] skips io.write entirely.
+        A list copies only the named subset. Default 'all'.
+    save_all_steps : bool, optional
+        If True, io.write fires at every rollout step (0..nsteps). If False,
+        io.write fires only at step == nsteps (the final step). Default False.
 
     Returns
     -------
@@ -126,24 +132,27 @@ def deterministic(
         for step, (x, coords) in enumerate(model):
             # Subselect domain/variables as indicated in output_coords
             x, coords = map_coords(x, coords, output_coords)
-            #### Becca Edit - subset data saved to io
-            if variables_list is None:
-                io.write(*split_coords(x, coords))
-            elif variables_list == []:
-                # If variables_list is an empty list, skip writing to io
-                pass
-            elif variables_list is not None:
-                coords_subset = coords.copy()
-                indices = []
-                variables_list_subset = []
-                for var in variables_list:
-                    indices.append(coords["variable"].tolist().index(var))
-                    variables_list_subset.append(str(coords["variable"][coords["variable"].tolist().index(var)]))
-                
-                x_subset = x[:,:,indices,:,:]
-                coords_subset["variable"] = np.asarray(variables_list_subset)
-                io.write(*split_coords(x_subset, coords_subset))
-            #### Becca Edit End
+
+            # GPU->CPU copy: skip intermediate steps unless save_all_steps,
+            # and skip entirely if variables_list empty or None.
+            should_write = save_all_steps or step == nsteps
+            no_vars = variables_list is None or variables_list == []
+
+            if should_write and not no_vars:
+                if variables_list == 'all':
+                    io.write(*split_coords(x, coords))
+                else:
+                    coords_subset = coords.copy()
+                    indices = []
+                    variables_list_subset = []
+                    for var in variables_list:
+                        indices.append(coords["variable"].tolist().index(var))
+                        variables_list_subset.append(str(coords["variable"][coords["variable"].tolist().index(var)]))
+
+                    x_subset = x[:,:,indices,:,:]
+                    coords_subset["variable"] = np.asarray(variables_list_subset)
+                    io.write(*split_coords(x_subset, coords_subset))
+
             pbar.update(1)
             if step == nsteps:
                 break

@@ -1,4 +1,4 @@
-#### Disable loguru and tqdm outputs globally to reduce unnessecary output to log file
+#### Disable loguru and tqdm outputs globally to reduce unnessecary clutter to log file
 from loguru import logger; import sys
 # Remove the default logger that prints to the console
 logger.remove()
@@ -20,7 +20,7 @@ from SFNO_update import SFNO
 
 import earth2studio.data as data
 from earth2studio.models.auto import Package
-from utils import create_initialization_file, get_ivt #filename_to_year, datetime_range, open_hdf5 # these aren't used in this script currently
+from utils import create_initialization_file, get_ivt 
 
 from datetime import datetime, timedelta
 import json
@@ -63,9 +63,10 @@ else:
     experiment_number = 2
 
 # Load Configuration from JSON
-config_path = f'./configs/exp{experiment_number}.json'
+config_path = f'./configs/exp{experiment_number}.json' 
 with open(config_path, 'r') as f:
     config = json.load(f)
+print(f"*** Loaded config from {config_path} ***")
 
 # Parse Experiment Setup
 exp_params = config['experiment_setup']
@@ -81,18 +82,17 @@ if 'compute_ivt' in exp_params:
 bounding_box = {}
 if 'bounding_box' in exp_params:
     bounding_box = exp_params['bounding_box']
-    # convert the values to be float 
     for key in bounding_box:
-        bounding_box[key] = float(bounding_box[key])
+        bounding_box[key] = float(bounding_box[key])     # convert the values to be float 
 
-####### NEW: Parse Perturbation Config #######
+
+### Parse perturbation settings (if any)
 apply_masking = False
 variables_to_mask = []
 if 'perturbation' in config:
     perturb_params = config['perturbation']
     apply_masking = perturb_params.get('apply_masking', False)
     variables_to_mask = perturb_params.get('variables_to_mask', [])
-###############################################
     
 # Parse Model Parameters
 model_params = config['model_parameters']
@@ -128,27 +128,33 @@ results_out_dir = f"{base_output_dir}/Experiment{str(experiment_number)[0]}/{val
 if not os.path.exists(results_out_dir):
     os.makedirs(results_out_dir)
 
-################## PARALLELIZATION SETUP ######################
+### Parallelization Setup
 
 # SGE_TASK_ID is 1-indexed 
 task_id_env = os.environ.get('SGE_TASK_ID')
-if task_id_env is None:
+if task_id_env is None or not task_id_env.isdigit():
     print("WARNING: SGE_TASK_ID not found. Defaulting to Task 1 of 1 (Running all epochs).")
     task_id = 0
     num_tasks = 1
 else:
-    task_id = int(task_id_env) - 1 # Convert to 0-indexed for numpy splitting
-    num_tasks = 4 # Fixed to 4 for now
+    task_id = int(task_id_env) - 1 # Convert to 0-indexed for numpy splitting'
+    task_last = os.environ.get('SGE_TASK_LAST'); task_first = os.environ.get('SGE_TASK_FIRST')
+    num_tasks = int(task_last) - int(task_first) + 1 #int(os.environ.get('SGE_TASK_LAST')) # Total number of tasks, default to 1 if not
 
 # Split epochs among tasks
-epochs_subset = np.array_split(epochs_to_run, num_tasks)[task_id]
+epochs_split = np.array_split(epochs_to_run, num_tasks) # returns a list of arrays, each containing the epochs for that task 
+if len(epochs_split) > 1:
+    epochs_subset = epochs_split[task_id]
+else:
+    epochs_subset = epochs_to_run
+
 print(f"--- JOB ARRAY INFO ---")
 print(f"Task ID (0-indexed): {task_id} / {num_tasks - 1}")
 print(f"Total Epochs: {len(epochs_to_run)}")
 print(f"Epochs Assigned to this Task: {epochs_subset}")
 print(f"----------------------")
 
-# --- LOGGING SETUP: Define log file path and write header if new ---
+### LOGGING SETUP: Define log file path and write header if new
 # Append task_id to log file to prevent write conflicts
 log_fp = os.path.join(os.getcwd(),'logs',f'Experiment{str(experiment_number)}',f"timing_log_{valid_timestep[:10]}_task{task_id+1}.csv")
 os.makedirs(results_out_dir, exist_ok=True) # Ensure dir exists for the log
@@ -160,7 +166,7 @@ print(f"Logging performance stats to: {log_fp}")
 
 t_script_start = time.time()
 
-# Outer loop = Epochs (Load model once), Inner loop = Init times
+### Outer loop = Epochs (Load model once), Inner loop = Init times
 for n_epoch in epochs_subset: 
     # --- Epoch Start ---
     t_epoch_start = time.time()
@@ -212,15 +218,15 @@ for n_epoch in epochs_subset:
             os.makedirs(os.path.dirname(results_out_fp), exist_ok=True)
             
             # Prepare Initialization Data
-            data_create_fp = f"/INSERT_DIRECTORY_OF_INITIALIZATION_FILES/Initialize_"+inference_name+".nc" 
+            data_create_fp = f"/INSERT_YOUR_DIRECTORY_OF_INITIALIZATION_FILES/Initialize_"+inference_name+".nc" 
 
-            ######## NEW CODE FOR USING THE PERTURBATION #########
+            ### If applying perturbation
             if apply_masking:
                 # Get the filename from init_fp
                 filename = os.path.basename(data_create_fp)
-                filename = filename.replace('.nc', '_perturbedWinds.nc')
-                data_create_fp = os.path.join('/projectnb/eb-general/shared_data/data/processed/FourCastNet_sfno/perturbed_init_files/', filename)
-            ######################################################
+                filename = filename.replace('.nc', '_perturbedWinds.nc') 
+                data_create_fp = os.path.join('/projectnb/eb-general/shared_data/data/processed/FourCastNet_sfno/perturbed_init_files/', filename) # using perturbations in shareed data dir.
+            
 
             if not os.path.exists(data_create_fp):
                 create_initialization_file(start_timestep=start_timestep, valid_timestep=valid_timestep, init_fp=data_create_fp, )
@@ -233,18 +239,29 @@ for n_epoch in epochs_subset:
             io = ZarrBackend() # Temporary in-memory Zarr backend
             
             # --- INFERENCE ---
+
+            # --- io write subset --- 
+            #   - variables_to_save: always required (final NetCDF save)
+            #   - IVT inputs (u/v/q at 8 levels): only when compute_ivt=True
+            variables_list_subset = list(variables_to_save)
+            if compute_ivt:
+                _ivt_levels = [1000, 925, 850, 700, 600, 500, 400, 300]
+                _ivt_vars = [f"{p}{lvl}" for p in ("u", "v", "q") for lvl in _ivt_levels]
+                for v in _ivt_vars:
+                    if v not in variables_list_subset:
+                        variables_list_subset.append(v)
             print('RUNNING INFERENCE FOR LEADTIME', n_steps/4, 'INIT_TIME', start_datetime)
             t_infer_start = time.time()
             with torch.no_grad():
                 io = deterministic([start_datetime], n_steps, model, initial_data, io, 
-                variables_list=variables_to_save # should i disabiled for now to access all variables for IVT calculation
+                variables_list=variables_list_subset
                 )
             t_infer_end = time.time()
             total_infer_dur += (t_infer_end - t_infer_start)
 
             # --- SAVING & PROCESSING --- 
             t_save_start = time.time()
-            ds = xr.open_zarr(io.root.store)
+            ds = xr.open_zarr(io.root.store) # open the in-memory Zarr dataset returned by the deterministic function
             
             ds["time"] = ds["time"].astype("datetime64[ns]")
 
@@ -298,20 +315,6 @@ for n_epoch in epochs_subset:
 
     # --- Monitoring: Capture GPU stats after all inits for this epoch ---
     peak_mem = torch.cuda.max_memory_allocated() / 1e9 # Convert to GB
-    try:
-        cvd = os.environ.get("CUDA_VISIBLE_DEVICES")
-        if cvd:
-            phys_id = cvd.split(",")[current_gpu]
-        else:
-            phys_id = str(current_gpu)
-        
-        gpu_stats = subprocess.check_output(
-            ["nvidia-smi", f"--id={phys_id}", "--query-gpu=utilization.gpu", "--format=csv,noheader,nounits"], 
-            encoding='utf-8'
-        ).strip()
-        gpu_util = f"{gpu_stats}%"
-    except Exception as e:
-        gpu_util = f"Err: {e}"
         
     # Cleanup Model (Once per epoch)
     torch.cuda.empty_cache()
@@ -324,7 +327,6 @@ for n_epoch in epochs_subset:
     total_epoch_dur = time.time() - t_epoch_start
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Print timing info
     print(f"\n📊 Epoch {n_epoch} Analysis (All Initializations):")
     print(f"   Total Time: {total_epoch_dur:.2f}s")
     print(f"   ├── 📂 Loading:   {load_dur:.2f}s ({load_dur/total_epoch_dur:.0%})")
@@ -332,10 +334,10 @@ for n_epoch in epochs_subset:
     print(f"   ├── 🚀 Inference: {total_infer_dur:.2f}s ({total_infer_dur/total_epoch_dur:.0%})")
     print(f"   ├── 💧 IVT Calc:  {total_ivt_dur:.2f}s ({total_ivt_dur/total_epoch_dur:.0%})")
     print(f"   └── 💾 Saving:    {total_save_dur:.2f}s ({total_save_dur/total_epoch_dur:.0%})")
-    print(f"   GPU Util: {gpu_util} | Peak Mem: {peak_mem:.2f} GB")
+    print(f"   Peak Mem: {peak_mem:.2f} GB")
     print("-" * 60 + "\n")
 
     # Write to CSV Log
     with open(log_fp, "a") as f:
-        f.write(f"{n_epoch},{total_epoch_dur:.2f},{load_dur:.2f},{total_init_dur:.2f},{total_infer_dur:.2f},{total_ivt_dur:.2f},{total_save_dur:.2f},{gpu_util},{peak_mem:.2f},{timestamp}\n")
+        f.write(f"{n_epoch},{total_epoch_dur:.2f},{load_dur:.2f},{total_init_dur:.2f},{total_infer_dur:.2f},{total_ivt_dur:.2f},{total_save_dur:.2f},{peak_mem:.2f},{timestamp}\n")
     # -----------------------------------
