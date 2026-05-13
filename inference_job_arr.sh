@@ -40,7 +40,7 @@ exec > $LOG_FILE 2>&1
 
 # Environment Setup
 module load miniconda 
-conda activate earth2studio
+conda activate e2s-new
 
 cd INSERT_PROJECT_DIRECTORY
 python ./inference.py $EXP_NUM
