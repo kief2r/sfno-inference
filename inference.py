@@ -154,18 +154,6 @@ print(f"Total Epochs: {len(epochs_to_run)}")
 print(f"Epochs Assigned to this Task: {epochs_subset}")
 print(f"----------------------")
 
-### LOGGING SETUP: Define log file path and write header if new
-# Append task_id to log file to prevent write conflicts
-log_fp = os.path.join(os.getcwd(),'logs',f'Experiment{str(experiment_number)}',f"timing_log_{valid_timestep[:10]}_task{task_id+1}.csv")
-os.makedirs(results_out_dir, exist_ok=True) # Ensure dir exists for the log
-if not os.path.exists(log_fp):
-    with open(log_fp, "w") as f:
-        # Added Init_s and IVT_s to header
-        f.write("Epoch,Total_s,Load_s,Init_s,Infer_s,IVT_s,Save_s,GPU_Util,Peak_VRAM_GB,Timestamp\n")
-print(f"Logging performance stats to: {log_fp}")
-
-t_script_start = time.time()
-
 ### Outer loop = Epochs (Load model once), Inner loop = Init times
 for n_epoch in epochs_subset: 
     # --- Epoch Start ---
@@ -325,7 +313,6 @@ for n_epoch in epochs_subset:
     # --- Monitoring: Final timing prints ---
     load_dur = t_load_end - t_load_start
     total_epoch_dur = time.time() - t_epoch_start
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     print(f"\n📊 Epoch {n_epoch} Analysis (All Initializations):")
     print(f"   Total Time: {total_epoch_dur:.2f}s")
@@ -336,8 +323,3 @@ for n_epoch in epochs_subset:
     print(f"   └── 💾 Saving:    {total_save_dur:.2f}s ({total_save_dur/total_epoch_dur:.0%})")
     print(f"   Peak Mem: {peak_mem:.2f} GB")
     print("-" * 60 + "\n")
-
-    # Write to CSV Log
-    with open(log_fp, "a") as f:
-        f.write(f"{n_epoch},{total_epoch_dur:.2f},{load_dur:.2f},{total_init_dur:.2f},{total_infer_dur:.2f},{total_ivt_dur:.2f},{total_save_dur:.2f},{peak_mem:.2f},{timestamp}\n")
-    # -----------------------------------
