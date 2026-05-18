@@ -5,15 +5,8 @@ This folder contains inference scripts for running SFNO forecasts with earth2stu
 ## Environment setup *specific to BU SCC*
 
 ```
-conda create -n e2s-new python=3.12 -y 
-conda activate e2s-new
-pip install uv
-export UV_CACHE_DIR="INSERT_YOUR_PERSONAL_PROJECT_DIRECTORY/uv_cache"
-uv pip install "earth2studio @ git+https://github.com/NVIDIA/earth2studio.git@0.10.0"
-uv pip install "earth2studio[fcn]"
-uv pip install numpy matplotlib pandas xarray cartopy cmocean tqdm scikit-learn
-uv pip install "makani @ git+https://github.com/NVIDIA/modulus-makani.git@28f38e3e929ed1303476518552c64673bbd6f722"
-uv pip install earth2studio[sfno]
+conda env create -f e2s_environment.yml -n my-e2s
+pip install "makani[all] @ git+https://github.com/NVIDIA/modulus-makani.git@v0.2.0"
 ```
 
 - Run this to check earth2studio wasn't installed in the home directory
