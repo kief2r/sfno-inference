@@ -5,7 +5,7 @@ This folder contains inference scripts for running SFNO forecasts with earth2stu
 ## Environment setup *specific to BU SCC*
 
 ```
-conda env create -f e2s_environment.yml -n my-e2s
+conda env create -f e2s_environment.yml -n e2s
 pip install "makani[all] @ git+https://github.com/NVIDIA/modulus-makani.git@v0.2.0"
 ```
 
