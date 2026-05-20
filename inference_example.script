@@ -25,7 +25,7 @@
 
 
 # Define the log directory and file name
-LOG_DIR="/projectnb/eb-reu/rbaiman/sfno-inference/logs/"
+LOG_DIR="/PROJECT_DIRECTORY/sfno-inference/logs/"
 LOG_FILE="${LOG_DIR}/inference_${JOB_ID}.log"
 
 # Create the directory if it doesn't exist
@@ -35,7 +35,7 @@ exec > $LOG_FILE 2>&1
 
 # Environment Setup
 module load miniconda 
-conda activate e2s-new
+conda activate e2s
 
-cd /projectnb/eb-reu/rbaiman/sfno-inference
+cd /PROJECT_DIRECTORY/sfno-inference
 python inference_example.py
