@@ -57,23 +57,25 @@ python -c "import earth2studio; print('Found at:', earth2studio.__file__)"
 
 ## Running inference_example simple case
 
+Open `inference_example.script` and check the following:
+* LOG_DIR
+* LOG_FILE
+* conda activate is selecting your environment
+* cd to sfno-inference in your project directory
 
-# Define the log directory and file name
-LOG_DIR="/projectnb/eb-reu/rbaiman/sfno-inference/logs/"
-LOG_FILE="${LOG_DIR}/inference_${JOB_ID}.log"
+Open `inference_example.py` and change all variables in "to_select" section.
 
-# Create the directory if it doesn't exist
-mkdir -p $LOG_DIR
-
-exec > $LOG_FILE 2>&1
-
-# Environment Setup
-module load miniconda 
-conda activate e2s-new
-
-cd /projectnb/eb-reu/rbaiman/sfno-inference
-python inference_example.py
-
+Submit the job using 
+```
+qsub inference_example.script
+```
+### Monitoring & cleanup
+```
+qstat -u $USER              # list your running/queued jobs
+qstat -j <job_id>            # detailed status for one job
+qdel <job_id>                # cancel a job (or job array)
+```
+Job logs go in `LOG_DIR/Experiment{N}/inference_parallel_<JOB_ID>_<TASK_ID>.log` (any print statements, inference info, etc.).
 
 ## Running inference
 
