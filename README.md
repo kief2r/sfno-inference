@@ -55,6 +55,26 @@ python -c "import earth2studio; print('Found at:', earth2studio.__file__)"
   - `plot_metric_utils.py` — helper functions for plotting and metrics (mse, IoU, amplitude) from inference runs.
   - `figures/` — saved figures produced by the example notebooks.
 
+## Running inference_example simple case
+
+
+# Define the log directory and file name
+LOG_DIR="/projectnb/eb-reu/rbaiman/sfno-inference/logs/"
+LOG_FILE="${LOG_DIR}/inference_${JOB_ID}.log"
+
+# Create the directory if it doesn't exist
+mkdir -p $LOG_DIR
+
+exec > $LOG_FILE 2>&1
+
+# Environment Setup
+module load miniconda 
+conda activate e2s-new
+
+cd /projectnb/eb-reu/rbaiman/sfno-inference
+python inference_example.py
+
+
 ## Running inference
 
 ### Before your first submission
