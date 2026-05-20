@@ -23,8 +23,8 @@ time_start = time.time()
 
 
 ########## to Select #############
-INITIAL_DATA_FP = "/projectnb/eb-reu/rbaiman/sfno-inference/Initializations/Initialize_2022_12_24T00_nsteps12.nc" # filepath for initial data
-RESULTS_FP = "/projectnb/eb-reu/rbaiman/sfno-inference/Forecasts/" # ressults will be saved here with the name format "Checkpoint{n_epoch}_{inference_name}.nc"
+INITIAL_DATA_FP = "/PROJECT_DIRECTORY/Initializations/Initialize_2022_12_24T00_nsteps12.nc" # filepath for initial data
+RESULTS_FP = "/PROJECT_DIRECTORY/sfno-inference/Forecasts/" # ressults will be saved here with the name format "Checkpoint{n_epoch}_{inference_name}.nc"
 START_DATETIME = '2022-12-24T00:00:00' # this should match the initial timestep
 VARIABLE_TO_SAVE = ['msl', 'tcwv'] #Only save selected variables - it slows down inference SIGNIFICANTLY to save all 74 variables
 N_STEPS = 12 # each n_step = 6hrs, so n_steps=12 means 3 days of forecast, n_steps=20 means 5 days of forecast, etc.
