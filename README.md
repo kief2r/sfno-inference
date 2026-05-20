@@ -5,8 +5,7 @@ This folder contains inference scripts for running SFNO forecasts with earth2stu
 ## Environment setup *specific to BU SCC*
 
 ```
-conda env create -f e2s_environment.yml -n e2s
-pip install "makani[all] @ git+https://github.com/NVIDIA/modulus-makani.git@v0.2.0"
+conda create --clone /projectnb/eb-reu/rbaiman/.conda/envs/e2s-new --name e2s
 ```
 
 - Run this to check earth2studio wasn't installed in the home directory
@@ -14,14 +13,16 @@ pip install "makani[all] @ git+https://github.com/NVIDIA/modulus-makani.git@v0.2
 python -c "import earth2studio; print('Found at:', earth2studio.__file__)"
 ```
 
-- the UV cache directory resets to be the home directory on the BU SCC after each session ends, so you may want to add the export UV_CACHE_DIR line to your .bashrc file with:
-```
-echo 'export UV_CACHE_DIR="INSERT_YOUR_PERSONAL_PROJECT_DIRECTORY/uv_cache"' >> ~/.bashrc
-source ~/.bashrc
-echo $UV_CACHE_DIR # to verify it worked!
-```
-
 ## Directory contents:
+
+##### `inference_example.py`
+
+- Simple one epoch or 70 epoch inference run. Great place to start before running inference.py
+
+##### `inference_example.script`
+
+- Use this script to run inference_example.py
+
 ##### `deterministic_update.py`
 
 - rewrites the earth2studio deterministic function to handle saving only specific variables in the output.
@@ -34,7 +35,7 @@ echo $UV_CACHE_DIR # to verify it worked!
 - helper functions e.g. creating Initialization files, opening files.
 
 ##### `inference.py`
-- main script to run SFNO inference with earth2studio.
+- main script to run multiple experimental SFNO inference runs with earth2studio.
 
 #### `inference_job_arr.sh`
 - uses a job array to parallelize inference runs on BU SCC.
