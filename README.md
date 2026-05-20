@@ -55,7 +55,7 @@ python -c "import earth2studio; print('Found at:', earth2studio.__file__)"
   - `plot_metric_utils.py` — helper functions for plotting and metrics (mse, IoU, amplitude) from inference runs.
   - `figures/` — saved figures produced by the example notebooks.
 
-## Running inference_example simple case
+## Running inference example simple case
 
 Open `inference_example.script` and check the following:
 * LOG_DIR
@@ -77,7 +77,7 @@ qdel <job_id>                # cancel a job (or job array)
 ```
 Job logs go in `LOG_DIR/Experiment{N}/inference_parallel_<JOB_ID>_<TASK_ID>.log` (any print statements, inference info, etc.).
 
-## Running inference
+## Running inference (robust script for experiment options)
 
 ### Before your first submission
 Open `inference_job_arr.sh` (and/or `inference.sh`) and fill in the following placeholders:
