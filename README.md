@@ -59,11 +59,10 @@ python -c "import earth2studio; print('Found at:', earth2studio.__file__)"
 
 Open `inference_example.script` and check the following:
 * LOG_DIR
-* LOG_FILE
 * conda activate is selecting your environment
 * cd to sfno-inference in your project directory
 
-Open `inference_example.py` and change all variables in "to_select" section.
+Open `inference_example.py` and update all variables in "to_select" section to your desired options.
 
 Submit the job using 
 ```
@@ -75,7 +74,6 @@ qstat -u $USER              # list your running/queued jobs
 qstat -j <job_id>            # detailed status for one job
 qdel <job_id>                # cancel a job (or job array)
 ```
-Job logs go in `LOG_DIR/Experiment{N}/inference_parallel_<JOB_ID>_<TASK_ID>.log` (any print statements, inference info, etc.).
 
 ## Running inference (robust script for experiment options)
 
