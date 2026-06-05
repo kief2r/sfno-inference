@@ -5,15 +5,7 @@ This folder contains inference scripts for running SFNO forecasts with earth2stu
 ## Environment setup *specific to BU SCC*
 
 ```
-conda create -n e2s-new python=3.12 -y 
-conda activate e2s-new
-pip install uv
-export UV_CACHE_DIR="INSERT_YOUR_PERSONAL_PROJECT_DIRECTORY/uv_cache"
-uv pip install "earth2studio @ git+https://github.com/NVIDIA/earth2studio.git@0.10.0"
-uv pip install "earth2studio[fcn]"
-uv pip install numpy matplotlib pandas xarray cartopy cmocean tqdm scikit-learn
-uv pip install "makani @ git+https://github.com/NVIDIA/modulus-makani.git@28f38e3e929ed1303476518552c64673bbd6f722"
-uv pip install earth2studio[sfno]
+conda create --clone /projectnb/eb-reu/rbaiman/.conda/envs/e2s-new --name e2s
 ```
 
 - Run this to check earth2studio wasn't installed in the home directory
@@ -21,14 +13,16 @@ uv pip install earth2studio[sfno]
 python -c "import earth2studio; print('Found at:', earth2studio.__file__)"
 ```
 
-- the UV cache directory resets to be the home directory on the BU SCC after each session ends, so you may want to add the export UV_CACHE_DIR line to your .bashrc file with:
-```
-echo 'export UV_CACHE_DIR="INSERT_YOUR_PERSONAL_PROJECT_DIRECTORY/uv_cache"' >> ~/.bashrc
-source ~/.bashrc
-echo $UV_CACHE_DIR # to verify it worked!
-```
-
 ## Directory contents:
+
+##### `inference_example.py`
+
+- Simple one epoch or 70 epoch inference run. Great place to start before running inference.py
+
+##### `inference_example.script`
+
+- Use this script to run inference_example.py
+
 ##### `deterministic_update.py`
 
 - rewrites the earth2studio deterministic function to handle saving only specific variables in the output.
@@ -41,7 +35,7 @@ echo $UV_CACHE_DIR # to verify it worked!
 - helper functions e.g. creating Initialization files, opening files.
 
 ##### `inference.py`
-- main script to run SFNO inference with earth2studio.
+- main script to run multiple experimental SFNO inference runs with earth2studio.
 
 #### `inference_job_arr.sh`
 - uses a job array to parallelize inference runs on BU SCC.
@@ -61,7 +55,27 @@ echo $UV_CACHE_DIR # to verify it worked!
   - `plot_metric_utils.py` — helper functions for plotting and metrics (mse, IoU, amplitude) from inference runs.
   - `figures/` — saved figures produced by the example notebooks.
 
-## Running inference
+## Running inference example simple case
+
+Open `inference_example.script` and check the following:
+* LOG_DIR
+* conda activate is selecting your environment
+* cd to sfno-inference in your project directory
+
+Open `inference_example.py` and update all variables in "to_select" section to your desired options.
+
+Submit the job using 
+```
+qsub inference_example.script
+```
+### Monitoring & cleanup
+```
+qstat -u $USER              # list your running/queued jobs
+qstat -j <job_id>            # detailed status for one job
+qdel <job_id>                # cancel a job (or job array)
+```
+
+## Running inference (robust script for experiment options)
 
 ### Before your first submission
 Open `inference_job_arr.sh` (and/or `inference.sh`) and fill in the following placeholders:

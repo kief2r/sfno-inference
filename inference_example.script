@@ -1,0 +1,41 @@
+#!/bin/bash -l
+
+# Set the time limit
+#$ -l h_rt=04:00:00
+
+# Name the job
+#$ -N inference
+
+# Request 1 GPU 
+#$ -l gpus=1
+#$ -l gpu_c=7.0  
+
+# Request 1 core, each with 8GB memory
+#$ -pe omp 1
+#$ -l mem_per_core=8G
+
+# Explicitly discard SGE system log, because we are redirecting output to a custom log file in the script
+#$ -o /dev/null
+
+# Merge output and error files
+#$ -j y
+
+#$ -P eb-reu        # Specify the SCC project name you want to use
+#$ -m ea                    # Send email when job ends or aborts
+
+
+# Define the log directory and file name
+LOG_DIR="/PROJECT_DIRECTORY/sfno-inference/logs/"
+LOG_FILE="${LOG_DIR}/inference_${JOB_ID}.log"
+
+# Create the directory if it doesn't exist
+mkdir -p $LOG_DIR
+
+exec > $LOG_FILE 2>&1
+
+# Environment Setup
+module load miniconda 
+conda activate e2s
+
+cd /PROJECT_DIRECTORY/sfno-inference
+python inference_example.py
